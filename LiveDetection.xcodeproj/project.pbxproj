@@ -13,6 +13,7 @@
 		E93A50DA205DA81100CA32D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E93A50D9205DA81100CA32D1 /* Assets.xcassets */; };
 		E93A50DD205DA81100CA32D1 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E93A50DB205DA81100CA32D1 /* LaunchScreen.storyboard */; };
 		E93A50E5205DB2CA00CA32D1 /* SqueezeNet.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = E93A50E4205DB2CA00CA32D1 /* SqueezeNet.mlmodel */; };
+		E93A50E72064815700CA32D1 /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E93A50E62064815700CA32D1 /* PreviewView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		E93A50DC205DA81100CA32D1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		E93A50DE205DA81100CA32D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E93A50E4205DB2CA00CA32D1 /* SqueezeNet.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = SqueezeNet.mlmodel; sourceTree = "<group>"; };
+		E93A50E62064815700CA32D1 /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +60,7 @@
 			children = (
 				E93A50D2205DA81100CA32D1 /* AppDelegate.swift */,
 				E93A50D4205DA81100CA32D1 /* ViewController.swift */,
+				E93A50E62064815700CA32D1 /* PreviewView.swift */,
 				E93A50D6205DA81100CA32D1 /* Main.storyboard */,
 				E93A50D9205DA81100CA32D1 /* Assets.xcassets */,
 				E93A50DB205DA81100CA32D1 /* LaunchScreen.storyboard */,
@@ -139,6 +142,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E93A50E72064815700CA32D1 /* PreviewView.swift in Sources */,
 				E93A50D5205DA81100CA32D1 /* ViewController.swift in Sources */,
 				E93A50E5205DB2CA00CA32D1 /* SqueezeNet.mlmodel in Sources */,
 				E93A50D3205DA81100CA32D1 /* AppDelegate.swift in Sources */,

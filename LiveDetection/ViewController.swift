@@ -10,105 +10,101 @@ import UIKit
 import AVKit
 import Vision
 
-class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
+class ViewController: UIViewController {
 
     @IBOutlet var resultLabel: UILabel!
     var redView: UIView!
     
+    @IBOutlet weak var previewView: PreviewView!
+    
+    private var requests = [VNRequest]()
+    
+    private var devicePosition: AVCaptureDevice.Position = .back
+    
     override func viewDidLoad() {
         super.viewDidLoad()
    
+        let faceDetectionRequest = VNDetectFaceRectanglesRequest(completionHandler: handleFaces) // Default
+        requests.append(faceDetectionRequest)
         
         //Start a session to capture input from Camera
-        let captureSession = AVCaptureSession()
+        previewView.session = AVCaptureSession()
         guard let captureDevice = AVCaptureDevice.default(for: .video) else { return }
         guard let input = try? AVCaptureDeviceInput(device: captureDevice) else { return } //try? = avoid doCatch
-        captureSession.addInput(input)
-        captureSession.startRunning()
         
-        // Display what phone is seeing full-size
-        let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-        view.layer.addSublayer(previewLayer)
-        previewLayer.frame = view.frame
-        
-        
-        redView = UIView()
-        redView.backgroundColor = .red
-        redView.alpha = 0.4
-        redView.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
-        view.addSubview(redView)
+        guard let session = previewView.session else { return }
+        session.addInput(input)
+        session.startRunning()
         
         let dataOutput = AVCaptureVideoDataOutput()
         dataOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "videoQueue"))
-        captureSession.addOutput(dataOutput)
-    }
-
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        
-        guard let pixelBuffer: CVPixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
-        guard let model = try? VNCoreMLModel(for: SqueezeNet().model) else { return }
-        
-//        let request = VNCoreMLRequest(model: model) { (finishedReq, Err) in
-//
-//            guard let results = finishedReq.results as? [VNClassificationObservation] else { return }
-//
-//            guard let firstObservation = results.first else { return }
-//
-//            DispatchQueue.main.async {
-//                self.resultLabel.text = "\(firstObservation.identifier) \(firstObservation.confidence)"
-//            }
-//        }
-        
-        let request = VNDetectFaceRectanglesRequest{ (req,err) in
-            if let err = err {
-                print("failed to detect faces: \(err)")
-                return
-            }
-            
-            req.results?.forEach({ (res) in
-                print(res)
-                
-                guard let faceObservation = res as? VNFaceObservation else {
-                    return
-                }
-                
-                print(faceObservation.boundingBox)
-                
-                let width: CGFloat = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
-                let height: CGFloat = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
-                
-                print("width: \(width), height: \(height)")
-                print("Face Observation: x - \(faceObservation.boundingBox.origin.x), y - \(faceObservation.boundingBox.origin.y), width - \(faceObservation.boundingBox.width), height - \(faceObservation.boundingBox.height)")
-                
-                //Starting Coordinates and dimensions of facial detection object
-                let x = width * faceObservation.boundingBox.origin.x
-                let heightOfBox = height * faceObservation.boundingBox.height
-                let y = height * (1 - faceObservation.boundingBox.origin.y) - heightOfBox //since VNFaceObservation returns lower left corner as starting point
-                let widthOfBox = width * faceObservation.boundingBox.width //width in the x direction
-                
-                print("x:\(x), y:\(y), width of box: \(widthOfBox), height of box: \(heightOfBox)")
-                
-                
-            })
-        }
-        
-        //no need to convert pixelBuffer into cgImage, since VNImageRequestHandler can take cvPixelBuffer as input...
-        
-        //just gotta change request from VNClassificationObservation -> VNDetectFaceRectanglesRequest
-        
-        try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:]).perform([request])
+        session.addOutput(dataOutput)
         
 
     }
     
-    func convert(cmage:CIImage) -> UIImage
-    {
-        let context:CIContext = CIContext.init(options: nil)
-        let cgImage:CGImage = context.createCGImage(cmage, from: cmage.extent)!
-        let image:UIImage = UIImage.init(cgImage: cgImage)
-        return image
+    func exifOrientationFromDeviceOrientation() -> UInt32 {
+        enum DeviceOrientation: UInt32 {
+            case top0ColLeft = 1
+            case top0ColRight = 2
+            case bottom0ColRight = 3
+            case bottom0ColLeft = 4
+            case left0ColTop = 5
+            case right0ColTop = 6
+            case right0ColBottom = 7
+            case left0ColBottom = 8
+        }
+        var exifOrientation: DeviceOrientation
+        
+        switch UIDevice.current.orientation {
+        case .portraitUpsideDown:
+            exifOrientation = .left0ColBottom
+        case .landscapeLeft:
+            exifOrientation = devicePosition == .front ? .bottom0ColRight : .top0ColLeft
+        case .landscapeRight:
+            exifOrientation = devicePosition == .front ? .top0ColLeft : .bottom0ColRight
+        default:
+            exifOrientation = .right0ColTop
+        }
+        return exifOrientation.rawValue
     }
 
+    func handleFaces(request: VNRequest, error: Error?) {
+        
+        DispatchQueue.main.async { //UI updates on main queue
+            guard let results = request.results as? [VNFaceObservation] else { return }
+            self.previewView.removeMask()
+            for face in results {
+                self.previewView.drawFaceboundingBox(face: face)
+            }
+        }
+        
+    }
+
+}
+
+extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate{
+    // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
+            let exifOrientation = CGImagePropertyOrientation(rawValue: exifOrientationFromDeviceOrientation()) else { return }
+        var requestOptions: [VNImageOption : Any] = [:]
+        
+        if let cameraIntrinsicData = CMGetAttachment(sampleBuffer, kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix, nil) {
+            requestOptions = [.cameraIntrinsics : cameraIntrinsicData]
+        }
+        
+        let imageRequestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: exifOrientation, options: requestOptions)
+        
+        do {
+            try imageRequestHandler.perform(requests)
+        }
+            
+        catch {
+            print(error)
+        }
+        
+    }
+    
 }
 
